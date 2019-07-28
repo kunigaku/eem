@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<meta charset='utf-8'>
+<html>
+
+<head>
+    <title>駅メモ属性マップ</title>
+    <script src="d3.v5.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"></script>
+
+    <style>
+        body {
+            padding: 0;
+            margin: 0
+        }
+
+        html,
+        body,
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map');
+        L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+            attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
+        }).addTo(map);
+        map.setView([35.681633, 139.767207], 15); // TODO 東京駅
+
+        var svgLayer = d3.select(map.getPanes().overlayPane)
+            .append('svg')
+            .attr('class', 'leaflet-zoom-hide');
+        var plotLayer = svgLayer.append('g');
+
+        var voronoi = d3.voronoi()
+            .x(function (d) {
+                return d.latitude;
+            })
+            .y(function (d) {
+                return d.longitude;
+            }).extent([[26.053896, 127.594806], [45.681028, 145.890560]]);
+
+        var updatePosition = function (d) {
+            d.pos = map.latLngToLayerPoint(new L.LatLng(d.latitude, d.longitude));
+            d3.select(this)
+                .attr("cx", d.pos.x)
+                .attr("cy", d.pos.y);
+        }
+
+        var updatePathPosition = function (d) {
+            d3.select(this)
+                .attr('fill', function (pathd) {
+                    if (!pathd) return null;
+                    switch (pathd.data.element) {
+                        case 'cool':
+                            return 'blue';
+                            break;
+                        case 'heat':
+                            return 'red';
+                            break;
+                        case 'eco':
+                            return 'green';
+                            break;
+                        default:
+                            return 'gray';
+                            break;
+                    }
+                })
+                .attr("d", function (pathd) {
+                    if (!pathd) return null;
+                    const newpathd = pathd.map(latlng => {
+                        const newpos = map.latLngToLayerPoint(new L.LatLng(latlng[0], latlng[1]));
+                        return [newpos.x, newpos.y];
+                    });
+                    const ret = "M" + newpathd.join("L") + "Z";
+                    return ret;
+                });
+        }
+
+        const station_file = 'stations.json';
+
+        d3.json(station_file).then(
+            function (data) {
+                console.log(data);
+                var points = data.stations;
+                var polygons = voronoi(points).polygons();
+
+                console.log(polygons);
+                plotLayer
+                    .selectAll(".cell")
+                    .data(polygons)
+                    .enter()
+                    .append("svg:path")
+                    .attr('stroke', "black")
+                    .attr('fill-opacity', 0.2)
+                    .each(updatePathPosition);
+
+                plotLayer
+                    .selectAll('circle')
+                    .data(points)
+                    .enter()
+                    .append('circle')
+                    .attr('r', 3)
+                    .attr('fill', "blue")
+                    .attr('stroke', "white")
+                    .attr('stroke-width', 1)
+                    .each(updatePosition);
+
+                map.on('zoomend', function () {
+                    plotLayer
+                        .selectAll('circle')
+                        .each(updatePosition);
+                    plotLayer
+                        .selectAll('path')
+                        .each(updatePathPosition);
+                });
+
+                reset();
+            });
+
+        var reset = function () {
+            var bounds = map.getBounds();
+            var topLeft = map.latLngToLayerPoint(bounds.getNorthWest());
+            var bottomRight = map.latLngToLayerPoint(bounds.getSouthEast());
+
+            svgLayer
+                .attr("width", bottomRight.x - topLeft.x)
+                .attr("height", bottomRight.y - topLeft.y)
+                .style("left", topLeft.x + "px")
+                .style("top", topLeft.y + "px");
+
+            plotLayer
+                .attr('transform', 'translate(' + -topLeft.x + ',' + -topLeft.y + ')');
+        }
+
+        map.on("move", reset);
+
+    </script>
+</body>
+
+</html>
