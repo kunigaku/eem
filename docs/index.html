@@ -105,11 +105,11 @@
 
         d3.json(station_file).then(
             function (data) {
-                console.log(data);
+                // console.log(data);
                 var points = data.stations;
                 var polygons = voronoi(points).polygons();
 
-                console.log(polygons);
+                // console.log(polygons);
                 plotLayer
                     .selectAll(".cell")
                     .data(polygons)
