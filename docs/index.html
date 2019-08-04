@@ -31,12 +31,25 @@
             height: 100%;
             width: 100%;
         }
+
+        #eem-toolbox {
+            z-index: 10000;
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            background-color: rgba(255, 255, 255, 0.8)
+        }
     </style>
 
 </head>
 
 <body>
-    <div id="map"></div>
+    <div id="map">
+        <div id="eem-toolbox">
+            <img src="gps.svg" width="36px" onClick="goToGpsLocation()" />
+        </div>
+    </div>
+
     <script>
         var map = L.map('map');
         L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
@@ -173,6 +186,15 @@
 
         map.on("move", reset);
 
+        function goToGpsLocation() {
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                try {
+                    map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+                } catch (e) {
+                    console.log(e);
+                }
+            });
+        }
     </script>
 </body>
 
