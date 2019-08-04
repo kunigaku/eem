@@ -42,7 +42,14 @@
         L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
             attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
         }).addTo(map);
-        map.setView([35.681633, 139.767207], 15); // TODO 東京駅
+
+        map.setView([35.681633, 139.767207], 15); // 東京駅
+        try {
+            var saved = JSON.parse(localStorage.getItem("last_location"));
+            map.setView([saved.latitude, saved.longitude], saved.zoom);
+        } catch (e) {
+            console.log(e);
+        }
 
         var svgLayer = d3.select(map.getPanes().overlayPane)
             .append('svg')
@@ -130,6 +137,20 @@
                     plotLayer
                         .selectAll('path')
                         .each(updatePathPosition);
+                });
+
+                map.on('moveend', function (e) {
+                    try {
+                        const center = e.target.getCenter();
+                        var last_location = {
+                            latitude: center.lat,
+                            longitude: center.lng,
+                            zoom: e.target.getZoom()
+                        };
+                        localStorage.setItem("last_location", JSON.stringify(last_location));
+                    } catch (e) {
+                        console.log(e);
+                    }
                 });
 
                 reset();
